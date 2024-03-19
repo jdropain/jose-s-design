@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Web server</title>
+  <!-- Agrega los estilos de Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+    #map {
+      height: 410px;
+    }
+
+    .moving-truck {
+      color: black; /* Cambia el color según tus preferencias */
+    }
+
+    .Title {
+      text-align: center;
+    }
+
+    .moving-truck-icon {
+      text-align: center;
+    }
+
+    .input-container {
+      text-align: center;
+      margin-top: 20px;
+    }
+
+    .date-time-input {
+      display: inline-block;
+      margin-right: 10px;
+    }
+
+    #filtered-data-container {
+      margin-top: 20px;
+    }
+
+    #filtered-data-container table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    #filtered-data-container th,
+    #filtered-data-container td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+
+    #filtered-data-container th {
+      background-color: #f2f2f2;
+    }
+  </style>
+</head>
+<body>
+  <div class="Title">
+    <h1>WEB SERVER1</h1>
+    <div class="moving-truck-icon">
+      <i class="fas fa-truck-moving moving-truck"></i>
+    </div>
+  </div>
+    
+  <!-- Contenedor del mapa Leaflet -->
+  <div id="map"></div>
+  <div id="data-container"></div>
+  <div class="input-container">
+    <div class="date-time-input">
+      <label for="start-date-time">Inicio:</label>
+      <input type="datetime-local" id="start-date-time">
+    </div>
+    <div class="date-time-input">
+      <label for="end-date-time">Fin:</label>
+      <input type="datetime-local" id="end-date-time">
+    </div>
+    <button id="apply-button">Apply</button>
+    <button id="back-button">Back</button>
+  </div>
+  <div id="filtered-data-container" style="display: none;">
+    <table></table>
+  </div>
+
+  <!-- Agrega la biblioteca Leaflet -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    const socket = new WebSocket('ws://100.24.161.99:80');  // Ajusta el puerto según tu configuración del servidor
+    const map = L.map('map').setView([0, 0], 13); // Mapa inicial centrado en coordenadas [0, 0]
+    const movingTruckIcon = L.divIcon({
+      className: 'moving-truck-icon',
+      html: '<i class="fas fa-truck-moving moving-truck"></i>',
+      iconSize: [60, 60],
+      iconAnchor: [30, 30]
+    });
+
+    const marker = L.marker([0, 0], { icon: movingTruckIcon }).addTo(map); // Inicializar un marcador con el ícono del camión
+    const polyline = L.polyline([], { color: 'blue' }).addTo(map); // Inicializar una polilínea para trazar la ruta del vehículo
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Función para actualizar el marcador con los nuevos datos
+    function updateMarkerAndMap(data) {
+      const dataContainer = document.getElementById('data-container');
+      dataContainer.innerHTML = `<p>Latitud: ${data.latitud}</p>
+                                 <p>Longitud: ${data.longitud}</p>
+                                 <p>Fecha: ${data.fecha}</p>
+                                 <p>Altitud: ${data.altitud}</p>`;
+
+      // Agregar la nueva ubicación a la polilínea para trazar la ruta
+      polyline.addLatLng([data.latitud, data.longitud]);
+
+      // Actualizar el marcador con la última ubicación
+      marker.setLatLng([data.latitud, data.longitud])
+        .bindPopup(`Fecha: ${data.fecha}<br>Altitud: ${data.altitud}`)
+        .openPopup();
+
+      // Centrar el mapa en la última ubicación
+      map.panTo([data.latitud, data.longitud]);
+    }
+
+    // Escucha eventos de mensajes del socket WebSocket
+    socket.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      updateMarkerAndMap(data);
+    };
+
+    document.getElementById('apply-button').addEventListener('click', async () => {
+      const startDate = document.getElementById('start-date-time').value;
+      const endDate = document.getElementById('end-date-time').value;
+
+      // Realizar solicitud al servidor para filtrar los datos
+      const response = await fetch(`/filtrar?inicio=${startDate}&fin=${endDate}`);
+      const data = await response.json();
+
+      // Mostrar los datos filtrados en la página
+      const dataContainer = document.getElementById('filtered-data-container');
+      const table = dataContainer.querySelector('table');
+      const tbody = document.createElement('tbody');
+
+      // Crea la fila de encabezado de la tabla si no existe
+      if (!table.querySelector('thead')) {
+        const thead = document.createElement('thead');
+        const headerRow = document.createElement('tr');
+        ['Fecha', 'Latitud', 'Longitud', 'Altitud'].forEach(text => {
+          const th = document.createElement('th');
+          th.textContent = text;
+          headerRow.appendChild(th);
+        });
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+      }
+
+      // Agrega filas de datos a la tabla
+      data.forEach(item => {
+        const row = document.createElement('tr');
+        ['fecha', 'latitud', 'longitud', 'altitud'].forEach(key => {
+          const cell = document.createElement('td');
+          cell.textContent = item[key];
+          row.appendChild(cell);
+        });
+        tbody.appendChild(row);
+      });
+      table.innerHTML = '';
+      table.appendChild(tbody);
+
+      // Mostrar el contenedor de datos filtrados
+      dataContainer.style.display = 'block';
+    });
+
+    document.getElementById('back-button').addEventListener('click', () => {
+      // Ocultar el contenedor de datos filtrados
+      document.getElementById('filtered-data-container').style.display = 'none';
+    });
+  </script>
+</body>
+</html>
