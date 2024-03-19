@@ -1,0 +1,14 @@
+@@ -1,3 +1,5 @@
+version: 2.1
+
+jobs:
+  deploy:
+    docker:
+@@ -6,7 +8,7 @@ jobs:
+      - run: ssh -oStrictHostKeyChecking=no -v $USER@$DNS "./deploy.sh"
+
+workflows:
+  version: 2
+  deploy-to-ec2:
+    jobs:
+      - deploy
