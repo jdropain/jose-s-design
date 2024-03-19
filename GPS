@@ -1,0 +1,30 @@
+{
+  "name": "mi-servidor-web",
+  "version": "1.0.0",
+  "description": "Un simple servidor web con Node.js y Express",
+  "main": "app1.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js"
+  },
+  "dependencies": {
+    "body-parser": "^1.20.2",
+    "dgram": "^1.0.1",
+    "dotenv": "^16.4.5",
+    "express": "^4.17.1",
+    "express-ws": "^5.0.2",
+    "http": "0.0.1-security",
+    "mongoose": "^8.2.0",
+    "pg": "^8.11.3",
+    "sqlite3": "^5.1.7",
+    "sse-express": "^1.0.2",
+    "ws": "^8.16.0"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.15"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "license": "MIT"
+}   
